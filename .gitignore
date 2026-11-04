@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+apps/web/.next/
+apps/web/out/
+apps/web/dist/
+services/api/.venv/
+services/api/__pycache__/
+services/api/**/*.pyc
+
+# env（绝对不能提交到 git）
+.env
+.env.local
+.env.*.local
+
+# misc
+.DS_Store
+*.log
+.idea/
+.vscode/
