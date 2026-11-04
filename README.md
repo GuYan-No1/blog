@@ -38,7 +38,7 @@ wc__zm@163.com
 Abcd1324.*
 
 
-page.ele("#user_login").input("wc__zm@163.com")
-# 定位密码输入框并输入密码
-page.ele("#user_password").input("Abcd1324.*")
+nslookup xmoekr.cn
+nslookup minio.xmoekr.cn
+
 
