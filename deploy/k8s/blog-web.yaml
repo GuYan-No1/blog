@@ -50,12 +50,24 @@ metadata:
   name: blog-web-ingress
   namespace: default
   annotations:
-    kubernetes.io/ingress.class: "traefik"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - xmoekr.cn
+      secretName: blog-tls-secret
   rules:
-    - host: shturl.cc
+    - host: xmoekr.cn
       http:
         paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: blog-api-svc
+                port:
+                  number: 8000
           - path: /
             pathType: Prefix
             backend:
