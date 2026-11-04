@@ -16,7 +16,8 @@ spec:
         - name: tcr-secret
       containers:
         - name: blog-api
-          image: ccr.ccs.tencentyun.com/blog-865748877/blog-api:latest
+          image: ccr.ccs.tencentyun.com/blog-865748877/blog-api:v1
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
