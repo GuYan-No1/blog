@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blog-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blog-api
+  template:
+    metadata:
+      labels:
+        app: blog-api
+    spec:
+      imagePullSecrets:
+        - name: tcr-secret
+      containers:
+        - name: blog-api
+          image: ccr.ccs.tencentyun.com/blog-865748877/blog-api:latest
+          ports:
+            - containerPort: 8000
+          env:
+            # 集群内部访问MinIO（不走公网）
+            - name: MINIO_ENDPOINT
+              value: "minio:9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-secret
+                  key: secret-key
+            - name: MINIO_BUCKET
+              value: "blog-images"
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blog-api-svc
+spec:
+  selector:
+    app: blog-api
+  ports:
+    - port: 8000
+      targetPort: 8000
