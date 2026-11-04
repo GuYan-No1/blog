@@ -23,7 +23,7 @@ spec:
           env:
             # 集群内部访问MinIO（不走公网）
             - name: MINIO_ENDPOINT
-              value: "minio:9000"
+              value: "minio-svc:9000"
             - name: MINIO_ACCESS_KEY
               valueFrom:
                 secretKeyRef:

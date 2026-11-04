@@ -22,7 +22,7 @@ class Settings(BaseModel):
 
     # MinIO 配置
     # 本地开发：MINIO_ENDPOINT="minio.xmoekr.cn"
-    # K8s集群内部：MINIO_ENDPOINT="minio:9000"
+    # K8s集群内部：MINIO_ENDPOINT="minio-svc:9000"
     MINIO_ENDPOINT: str = os.getenv("MINIO_ENDPOINT", "minio.xmoekr.cn")
     MINIO_ACCESS_KEY: str = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
     MINIO_SECRET_KEY: str = os.getenv("MINIO_SECRET_KEY", "minio@123456")
@@ -31,10 +31,10 @@ class Settings(BaseModel):
     # 图片对外访问域名（固定公网，前端浏览器用，永远不变）
     MINIO_PUBLIC_DOMAIN: str = "minio.xmoekr.cn"
 
-    # secure 自动判断：端点是集群内部 minio:9000 则http，否则HTTPS
+    # secure 自动判断：端点是集群内部 minio-svc:9000 则http，否则HTTPS
     @property
     def MINIO_SECURE(self) -> bool:
-        return self.MINIO_ENDPOINT != "minio:9000"
+        return self.MINIO_ENDPOINT != "minio-svc:9000"
 
     @property
     def ARTICLES_DIR(self) -> str:

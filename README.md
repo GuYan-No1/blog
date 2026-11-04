@@ -42,3 +42,5 @@ nslookup xmoekr.cn
 nslookup minio.xmoekr.cn
 
 
+curl https://xmoekr.cn/api/health
+kubectl exec -it blog-api-5b674575dc-6k2hf -- bash
