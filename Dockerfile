@@ -21,6 +21,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 # 构建 web 子包
+# 声明构建参数
+ARG NEXT_PUBLIC_API_URL
+# 注入为环境变量，供 next build 读取
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN pnpm --filter web build
 
 # ---------- 4. 运行时镜像 ----------
