@@ -117,10 +117,6 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:latest
-          # 复用历史层缓存，二次构建通常 1~2 分钟
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   # ─────────────────────────────────────────────
   # 构建后端 FastAPI 镜像
   # ─────────────────────────────────────────────
@@ -156,8 +152,6 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   # ─────────────────────────────────────────────
   # 部署：SSH 到服务器执行 kubectl 滚动更新
