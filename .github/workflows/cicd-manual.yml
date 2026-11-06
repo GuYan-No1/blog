@@ -1,29 +1,37 @@
 name: Build & Deploy Blog
 
-# 手动触发：在 GitHub 仓库 Actions 页面点 "Run workflow"
 on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+    paths-ignore:
+      - 'README.md'
+      - '.gitignore'
+      - 'docs/**'
+
   workflow_dispatch:
     inputs:
       service:
-        description: 选择要发布的镜像
+        description: 选择要发布的服务
         required: true
         type: choice
         options:
           - web
           - api
           - both
-        default: web
+        default: both
       image_tag:
-        description: 镜像标签（留空则自动使用 sha-提交短哈希）
+        description: 镜像标签（留空自动生成）
         required: false
         type: string
       do_deploy:
-        description: 构建完成后是否立即部署到 k3s 集群
+        description: 是否立即部署到集群
         required: true
         type: boolean
         default: true
 
-# 同一时刻只允许一条发布流水线，避免并发改集群
 concurrency:
   group: deploy-blog
   cancel-in-progress: false
@@ -33,54 +41,65 @@ env:
   TCR_NAMESPACE: blog-865748877
 
 jobs:
-  # ─────────────────────────────────────────────
-  # 准备：统一计算镜像标签，供后续所有 job 复用
-  # ─────────────────────────────────────────────
   prepare:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.meta.outputs.tag }}
+      deploy_enabled: ${{ steps.meta.outputs.deploy_enabled }}
+      service: ${{ steps.meta.outputs.service }}
     steps:
       - name: Validate required variables
-        if: inputs.service == 'web' || inputs.service == 'both'
+        if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v')
         env:
           API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
         run: |
           set -euo pipefail
           if [ -z "${API_URL}" ]; then
-            echo "::error::缺少仓库变量 NEXT_PUBLIC_API_URL，请先到 Settings → Secrets and variables → Actions → Variables 添加"
+            echo "::error::缺少 NEXT_PUBLIC_API_URL 变量"
             exit 1
           fi
           echo "前端构建期 API 地址: ${API_URL}"
 
-      - name: Compute image tag
+      - name: Compute image tag & deploy flag
         id: meta
         env:
           INPUT_TAG: ${{ inputs.image_tag }}
           SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_SERVICE: ${{ inputs.service }}
+          INPUT_DO_DEPLOY: ${{ inputs.do_deploy }}
         run: |
           set -euo pipefail
-          # 输入值走环境变量而非直接拼接，避免特殊字符带来的 shell 注入
-          if [ -n "${INPUT_TAG}" ]; then
-            TAG="${INPUT_TAG}"
+
+          if [[ "${REF}" == refs/tags/v* ]]; then
+            TAG="${REF#refs/tags/}"
+            DEPLOY_ENABLED="true"
+            SERVICE="both"
+          elif [ "${EVENT_NAME}" = "workflow_dispatch" ]; then
+            if [ -n "${INPUT_TAG}" ]; then
+              TAG="${INPUT_TAG}"
+            else
+              TAG="sha-$(echo "${SHA}" | cut -c1-7)"
+            fi
+            DEPLOY_ENABLED="${INPUT_DO_DEPLOY}"
+            SERVICE="${INPUT_SERVICE}"
           else
             TAG="sha-$(echo "${SHA}" | cut -c1-7)"
+            DEPLOY_ENABLED="false"
+            SERVICE="both"
           fi
-          # 只允许字母、数字、点、横线、下划线
-          if ! echo "${TAG}" | grep -Eq '^[A-Za-z0-9._-]+$'; then
-            echo "::error::非法镜像标签: ${TAG}"
-            exit 1
-          fi
-          echo "本次镜像标签: ${TAG}"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
-  # ─────────────────────────────────────────────
-  # 构建前端 Next.js 镜像
-  # 注意：NEXT_PUBLIC_API_URL 必须在构建阶段传入，运行时注入无效
-  # ─────────────────────────────────────────────
+          echo "镜像标签: ${TAG}"
+          echo "是否部署: ${DEPLOY_ENABLED}"
+          echo "发布服务: ${SERVICE}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "deploy_enabled=${DEPLOY_ENABLED}" >> "$GITHUB_OUTPUT"
+          echo "service=${SERVICE}" >> "$GITHUB_OUTPUT"
+
   build-web:
     needs: prepare
-    if: inputs.service == 'web' || inputs.service == 'both'
+    if: needs.prepare.outputs.service == 'web' || needs.prepare.outputs.service == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -91,9 +110,6 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 用原生 docker login，不用 docker/login-action：
-      # 该 action 会先探测镜像仓库 /v2/ 接口，TCR 个人版对该探测返回
-      # "unauthorized: no scope specify"，导致登录失败。
       - name: Login to TCR
         env:
           REGISTRY: ${{ env.TCR_REGISTRY }}
@@ -108,21 +124,17 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          # 服务器是 x86_64，固定平台避免架构不匹配
           platforms: linux/amd64
           push: true
-          # 关键：NEXT_PUBLIC_* 是构建时变量，必须在这里传
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:latest
-  # ─────────────────────────────────────────────
-  # 构建后端 FastAPI 镜像
-  # ─────────────────────────────────────────────
+
   build-api:
     needs: prepare
-    if: inputs.service == 'api' || inputs.service == 'both'
+    if: needs.prepare.outputs.service == 'api' || needs.prepare.outputs.service == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -153,21 +165,16 @@ jobs:
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:latest
 
-  # ─────────────────────────────────────────────
-  # 部署：SSH 到服务器执行 kubectl 滚动更新
-  # ─────────────────────────────────────────────
   deploy:
     needs: [prepare, build-web, build-api]
-    # 有构建失败就不部署；任一构建成功（或跳过）才继续
-    if: |
-      always() && inputs.do_deploy && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    if: needs.prepare.outputs.deploy_enabled == 'true' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     steps:
       - name: Deploy web
-        if: needs.build-web.result == 'success'
+        if: needs.prepare.outputs.service == 'web' || needs.prepare.outputs.service == 'both'
         uses: appleboy/ssh-action@v1.2.0
         env:
-          IMAGE: ccr.ccs.tencentyun.com/blog-865748877/blog-web:${{ needs.prepare.outputs.tag }}
+          IMAGE: ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:${{ needs.prepare.outputs.tag }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -177,12 +184,7 @@ jobs:
           envs: IMAGE
           script: |
             set -e
-            # root 直接用 kubectl；普通用户走 sudo k3s kubectl
-            if kubectl get nodes >/dev/null 2>&1; then
-              K="kubectl"
-            else
-              K="sudo -n k3s kubectl"
-            fi
+            K="kubectl"
             echo "=== 更新 blog-web 镜像 -> ${IMAGE} ==="
             $K -n default set image deploy/blog-web blog-web="${IMAGE}"
             if ! $K -n default rollout status deploy/blog-web --timeout=240s; then
@@ -194,10 +196,10 @@ jobs:
             $K -n default get pods -l app=blog-web -o wide
 
       - name: Deploy api
-        if: needs.build-api.result == 'success'
+        if: needs.prepare.outputs.service == 'api' || needs.prepare.outputs.service == 'both'
         uses: appleboy/ssh-action@v1.2.0
         env:
-          IMAGE: ccr.ccs.tencentyun.com/blog-865748877/blog-api:${{ needs.prepare.outputs.tag }}
+          IMAGE: ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:${{ needs.prepare.outputs.tag }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -207,11 +209,7 @@ jobs:
           envs: IMAGE
           script: |
             set -e
-            if kubectl get nodes >/dev/null 2>&1; then
-              K="kubectl"
-            else
-              K="sudo -n k3s kubectl"
-            fi
+            K="kubectl"
             echo "=== 更新 blog-api 镜像 -> ${IMAGE} ==="
             $K -n default set image deploy/blog-api blog-api="${IMAGE}"
             if ! $K -n default rollout status deploy/blog-api --timeout=240s; then
