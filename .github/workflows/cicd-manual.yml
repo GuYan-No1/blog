@@ -30,7 +30,7 @@ concurrency:
 
 env:
   TCR_REGISTRY: ccr.ccs.tencentyun.com
-  TCR_NAMESPACE: blog-865748877
+  TCR_NAMESPACE: blog-100045259055
 
 jobs:
   # ─────────────────────────────────────────────
