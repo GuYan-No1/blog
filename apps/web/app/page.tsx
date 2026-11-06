@@ -1,4 +1,4 @@
-import Link from "next/link";
+// import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import ArticleList from "@/components/ArticleList";
 import ImageUpload from "@/components/ImageUpload";
@@ -9,7 +9,7 @@ export default async function HomePage() {
     <main className="max-w-4xl mx-auto py-10 px-4 space-y-12">
       <section>
         <h1 className="text-4xl font-bold text-slate-900 mb-4">
-          你好，我是一名前端转AI工程师
+          你好
         </h1>
         <p className="text-slate-600 text-lg leading-relaxed">
           过往使用 React + Node.js 做全栈开发，熟悉 MySQL、Redis。
