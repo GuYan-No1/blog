@@ -2,15 +2,21 @@ import Link from "next/link";
 
 export default function Navbar() {
   return (
-    <header className="border-b border-slate-200 bg-white">
-      <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/" className="text-xl font-bold text-slate-900">
-          TechBlog
+    <header className="sticky top-0 z-50 border-b border-line/60 bg-bg-base/80 backdrop-blur-md">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
+        <Link href="/" className="font-mono text-sm font-semibold text-ink">
+          xmoekr<span className="text-accent">.dev</span>
         </Link>
-        <nav className="space-x-6 text-sm">
-          <Link href="/" className="hover:text-blue-600 transition">首页</Link>
-          <Link href="/articles" className="hover:text-blue-600 transition">文章</Link>
-          <Link href="/about" className="hover:text-blue-600 transition">关于我</Link>
+        <nav className="flex items-center gap-6 text-sm text-ink-muted">
+          <Link href="/" className="transition-colors hover:text-accent">
+            首页
+          </Link>
+          <Link href="/articles" className="transition-colors hover:text-accent">
+            文章
+          </Link>
+          <Link href="/about" className="transition-colors hover:text-accent">
+            关于
+          </Link>
         </nav>
       </div>
     </header>
