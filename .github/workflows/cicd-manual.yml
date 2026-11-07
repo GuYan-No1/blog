@@ -47,6 +47,9 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
       deploy_enabled: ${{ steps.meta.outputs.deploy_enabled }}
       service: ${{ steps.meta.outputs.service }}
+      # 新增两个
+      changed_web: ${{ steps.paths.outputs.web }}
+      changed_api: ${{ steps.paths.outputs.api }}
     steps:
       - name: Validate required variables
         if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v')
@@ -71,7 +74,6 @@ jobs:
           INPUT_DO_DEPLOY: ${{ inputs.do_deploy }}
         run: |
           set -euo pipefail
-
           if [[ "${REF}" == refs/tags/v* ]]; then
             TAG="${REF#refs/tags/}"
             DEPLOY_ENABLED="true"
@@ -97,9 +99,23 @@ jobs:
           echo "deploy_enabled=${DEPLOY_ENABLED}" >> "$GITHUB_OUTPUT"
           echo "service=${SERVICE}" >> "$GITHUB_OUTPUT"
 
+      - name: 检测代码改动路径
+        id: paths
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'Dockerfile'
+              - '.github/workflows/**'
+            api:
+              - 'services/api/**'
+              - '.github/workflows/**'
   build-web:
     needs: prepare
-    if: needs.prepare.outputs.service == 'web' || needs.prepare.outputs.service == 'both'
+    if: (needs.prepare.outputs.service == 'web' || needs.prepare.outputs.service == 'both') && needs.prepare.outputs.changed_web == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -107,6 +123,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+        # ===== pnpm 依赖缓存 =====
+      - name: 缓存 pnpm 依赖
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pnpm-store
+            **/node_modules
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-
+        # ===== 配置 Docker Buildx =====
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -131,16 +158,28 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:latest
+            # ====== 新增：镜像层缓存到 TCR ======
+          cache-from: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:build-cache
+          cache-to: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:build-cache,mode=max
 
   build-api:
     needs: prepare
-    if: needs.prepare.outputs.service == 'api' || needs.prepare.outputs.service == 'both'
+    if: (needs.prepare.outputs.service == 'api' || needs.prepare.outputs.service == 'both') && needs.prepare.outputs.changed_api == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+        # ===== 新增：uv 依赖缓存 =====
+      - name: 缓存 uv 依赖
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('services/api/uv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-uv-
 
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -164,6 +203,10 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:latest
+              # ====== 新增：镜像层缓存到 TCR ======
+          cache-from: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:build-cache
+          cache-to: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:build-cache,mode=max
+
 
   deploy:
     needs: [prepare, build-web, build-api]
