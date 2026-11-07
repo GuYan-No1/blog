@@ -1,61 +1,55 @@
+import Link from "next/link";
 import ReactMarkdown from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { getArticleBySlug } from "@/lib/articles";
+import remarkGfm from "remark-gfm";
+// 类型起别名，避免和组件名重名冲突
+import type { ArticleDetail as ArticleDetailType } from "@/lib/types";
 
-type Props = {
-  params: Promise<{ slug: string }>;
-};
+interface Props {
+  article: ArticleDetailType;
+}
 
-export default async function ArticleDetail({ params }: Props) {
-  const { slug } = await params;
-  const article = await getArticleBySlug(slug);
-
-  if (!article) {
-    return (
-      <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
-        <h1 className="text-2xl font-bold">文章不存在</h1>
-      </div>
-    );
-  }
-
+export default function ArticleDetail({ article }: Props) {
   return (
-    <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
-      <h1 className="text-3xl font-bold mb-4 text-slate-900">{article.title}</h1>
-      <div className="flex gap-3 mb-8 text-sm text-slate-500">
-        <span>{article.date}</span>
-        <span className="bg-slate-100 px-2 py-0.5 rounded">{article.tag}</span>
+    <article>
+      {/* 元信息栏 */}
+      <div className="mb-4 flex flex-wrap items-center gap-3 text-xs">
+        {article.category && (
+          <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-accent">
+            {article.category.name}
+          </span>
+        )}
+        <span className="font-mono text-ink-muted">
+          {new Date(article.created_at).toLocaleDateString("zh-CN")}
+        </span>
+        <span className="font-mono text-ink-muted">{article.views} views</span>
       </div>
-      <div className="prose prose-slate max-w-none prose-headings:font-bold prose-code:before:content-none prose-code:after:content-none">
-        <ReactMarkdown
-          components={{
-            code(props) {
-              // 去掉 node 解构，只拿需要的字段
-              const { className, children, ...rest } = props as {
-                className?: string;
-                children?: React.ReactNode;
-              };
-              const match = /language-(\w+)/.exec(className || "");
-              return match ? (
-                <SyntaxHighlighter
-                  style={oneDark as never}  // 解决类型不匹配
-                  language={match[1]}
-                  PreTag="div"
-                  {...rest}
-                >
-                  {String(children).replace(/\n$/, "")}
-                </SyntaxHighlighter>
-              ) : (
-                <code className={className} {...rest}>
-                  {children}
-                </code>
-              );
-            },
-          }}
-        >
+
+      {/* 标题 + 摘要 */}
+      <h1 className="mb-6 text-3xl font-bold leading-tight tracking-tight text-ink md:text-4xl">
+        {article.title}
+      </h1>
+      <p className="mb-10 border-l-2 border-accent/40 pl-4 text-sm leading-relaxed text-ink-muted">
+        {article.summary}
+      </p>
+
+      {/* 正文 Markdown 渲染 */}
+      <div className="prose max-w-none">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
           {article.content}
         </ReactMarkdown>
       </div>
-    </div>
+
+      {/* 底部标签 */}
+      <div className="mt-14 flex flex-wrap gap-2 border-t border-line pt-6">
+        {article.tags.map((tag) => (
+          <span
+            key={tag.id}
+            className="rounded-md border border-line bg-bg-elevated px-2.5 py-1 font-mono text-xs text-ink-muted"
+          >
+            #{tag.name}
+          </span>
+        ))}
+      </div>
+    </article>
   );
 }

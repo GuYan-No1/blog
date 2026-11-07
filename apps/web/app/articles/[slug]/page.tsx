@@ -1,8 +1,9 @@
+export const instant = false;
+
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { getArticle } from "@/lib/api";
+import ArticleDetailAsync from "@/components/ArticleDetailAsync";
 
 export default async function ArticlePage({
   params,
@@ -13,12 +14,9 @@ export default async function ArticlePage({
   const articleId = Number(slug);
   if (Number.isNaN(articleId)) notFound();
 
-  const article = await getArticle(articleId).catch(() => null);
-  if (!article) notFound();
-
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-16">
-      {/* 返回按钮 */}
+      {/* 静态外壳：返回按钮，预渲染直接输出 */}
       <Link
         href="/"
         className="mb-10 inline-flex items-center gap-2 font-mono text-xs text-ink-muted
@@ -27,45 +25,26 @@ export default async function ArticlePage({
         ← 返回首页
       </Link>
 
-      {/* 元信息栏 */}
-      <div className="mb-4 flex flex-wrap items-center gap-3 text-xs">
-        {article.category && (
-          <span className="rounded-md border border-accent/30 bg-accent/10 px-2 py-0.5 font-mono text-accent">
-            {article.category.name}
-          </span>
-        )}
-        <span className="font-mono text-ink-muted">
-          {new Date(article.created_at).toLocaleDateString("zh-CN")}
-        </span>
-        <span className="font-mono text-ink-muted">{article.views} views</span>
-      </div>
-
-      {/* 标题 + 摘要 */}
-      <h1 className="mb-6 text-3xl font-bold leading-tight tracking-tight text-ink md:text-4xl">
-        {article.title}
-      </h1>
-      <p className="mb-10 border-l-2 border-accent/40 pl-4 text-sm leading-relaxed text-ink-muted">
-        {article.summary}
-      </p>
-
-      {/* 正文 Markdown 渲染 */}
-      <div className="prose max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {article.content}
-        </ReactMarkdown>
-      </div>
-
-      {/* 底部标签 */}
-      <div className="mt-14 flex flex-wrap gap-2 border-t border-line pt-6">
-        {article.tags.map((tag) => (
-          <span
-            key={tag.id}
-            className="rounded-md border border-line bg-bg-elevated px-2.5 py-1 font-mono text-xs text-ink-muted"
-          >
-            #{tag.name}
-          </span>
-        ))}
-      </div>
+      {/* 动态区域：Suspense 包裹，加载时显示骨架 */}
+      <Suspense fallback={<DetailSkeleton />}>
+        <ArticleDetailAsync id={articleId} />
+      </Suspense>
     </main>
+  );
+}
+
+// 骨架屏：近似最终布局，减少视觉跳动
+function DetailSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="h-4 w-32 rounded bg-bg-surface" />
+      <div className="h-10 w-4/5 rounded bg-bg-surface" />
+      <div className="h-16 rounded bg-bg-surface" />
+      <div className="space-y-3">
+        <div className="h-4 w-full rounded bg-bg-surface" />
+        <div className="h-4 w-11/12 rounded bg-bg-surface" />
+        <div className="h-4 w-10/12 rounded bg-bg-surface" />
+      </div>
+    </div>
   );
 }

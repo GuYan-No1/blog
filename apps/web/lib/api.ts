@@ -1,4 +1,6 @@
+import { cacheLife } from "next/cache";
 import type { ArticleDetail, ArticleListItem } from "./types";
+
 
 // 服务端走内网 Service，客户端走公网 HTTPS
 const isServer = typeof window === "undefined";
@@ -7,13 +9,13 @@ const BASE_URL = isServer
   : process.env.NEXT_PUBLIC_API_URL;
 
 async function getJSON<T>(path: string): Promise<T> {
+  // 必须放在函数体第一行，标记该函数为可缓存
+  "use cache";
+  // 缓存 10 分钟，单位为秒
+  cacheLife({ revalidate: 600 });
   const res = await fetch(`${BASE_URL}${path}`, {
-    // 原生缓存配置：600 秒 = 10 分钟
-    // 满足 Cache Components 校验，支持即时导航
-    next: { revalidate: 600 },
     headers: { Accept: "application/json" },
   });
-
   if (!res.ok) throw new Error(`API 请求失败: ${res.status}`);
   return (await res.json()) as T;
 }
