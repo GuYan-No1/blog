@@ -47,10 +47,15 @@ jobs:
       tag: ${{ steps.meta.outputs.tag }}
       deploy_enabled: ${{ steps.meta.outputs.deploy_enabled }}
       service: ${{ steps.meta.outputs.service }}
-      # 新增两个
       changed_web: ${{ steps.paths.outputs.web }}
       changed_api: ${{ steps.paths.outputs.api }}
     steps:
+      # ========== 修复1：必须先拉取代码，路径检测依赖git信息 ==========
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # 保留2层提交历史，足够对比文件改动
+
       - name: Validate required variables
         if: github.event_name != 'push' || startsWith(github.ref, 'refs/tags/v')
         env:
@@ -103,6 +108,8 @@ jobs:
         id: paths
         uses: dorny/paths-filter@v3
         with:
+          # ========== 修复2：标签发布默认全量构建，普通提交对比上一版 ==========
+          base: ${{ startsWith(github.ref, 'refs/tags/') && github.sha || 'HEAD^' }}
           filters: |
             web:
               - 'apps/web/**'
@@ -113,6 +120,7 @@ jobs:
             api:
               - 'services/api/**'
               - '.github/workflows/**'
+
   build-web:
     needs: prepare
     if: (needs.prepare.outputs.service == 'web' || needs.prepare.outputs.service == 'both') && needs.prepare.outputs.changed_web == 'true'
@@ -122,8 +130,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-        # ===== pnpm 依赖缓存 =====
       - name: 缓存 pnpm 依赖
         uses: actions/cache@v4
         with:
@@ -133,7 +142,7 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-
-        # ===== 配置 Docker Buildx =====
+
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -158,7 +167,6 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:latest
-            # ====== 新增：镜像层缓存到 TCR ======
           cache-from: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:build-cache
           cache-to: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:build-cache,mode=max
 
@@ -171,8 +179,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+           fetch-depth: 1
 
-        # ===== 新增：uv 依赖缓存 =====
       - name: 缓存 uv 依赖
         uses: actions/cache@v4
         with:
@@ -203,14 +212,16 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:latest
-              # ====== 新增：镜像层缓存到 TCR ======
           cache-from: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:build-cache
           cache-to: type=registry,ref=${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:build-cache,mode=max
 
-
   deploy:
     needs: [prepare, build-web, build-api]
-    if: needs.prepare.outputs.deploy_enabled == 'true' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
+    # ========== 修复3：兼容build任务被跳过的场景，skipped不算失败 ==========
+    if: |
+      needs.prepare.outputs.deploy_enabled == 'true'
+      && !contains(needs.*.result, 'failure')
+      && !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
     steps:
       - name: Deploy web
