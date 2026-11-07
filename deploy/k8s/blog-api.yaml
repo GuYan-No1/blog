@@ -36,6 +36,11 @@ spec:
                   key: secret-key
             - name: MINIO_BUCKET
               value: "blog-images"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DATABASE_URL
           resources:
             requests:
               cpu: 100m
