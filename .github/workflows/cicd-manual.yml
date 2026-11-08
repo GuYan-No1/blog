@@ -169,8 +169,8 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-web:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # cache-from: type=gha
+          # cache-to: type=gha,mode=max
 
   build-api:
     needs: prepare
@@ -217,8 +217,8 @@ jobs:
           tags: |
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:${{ needs.prepare.outputs.tag }}
             ${{ env.TCR_REGISTRY }}/${{ env.TCR_NAMESPACE }}/blog-api:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # cache-from: type=gha
+          # cache-to: type=gha,mode=max
 
   deploy:
     needs: [prepare, build-web, build-api]
