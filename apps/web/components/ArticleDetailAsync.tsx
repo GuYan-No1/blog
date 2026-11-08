@@ -1,9 +1,8 @@
-import { notFound } from "next/navigation";
-import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import MarkdownRenderer from "@/components/MarkdownRenderer"; // 引入包装组件
 import { getArticle } from "@/lib/api";
-import type { ArticleDetail as ArticleDetailType } from "@/lib/types";
+// import type { ArticleDetail as ArticleDetailType } from "@/lib/types";
+// import Link from "next/link";
+import { notFound } from "next/navigation";
 
 interface Props {
   id: number;
@@ -38,9 +37,8 @@ export default async function ArticleDetailAsync({ id }: Props) {
 
       {/* 正文 Markdown 渲染 */}
       <div className="prose max-w-none">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {article.content}
-        </ReactMarkdown>
+        {/* 使用包装后的客户端组件渲染 */}
+        <MarkdownRenderer content={article.content} />
       </div>
 
       {/* 底部标签 */}

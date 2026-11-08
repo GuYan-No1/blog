@@ -1,6 +1,13 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
+/* 默认引入亮色主题的基础样式 */
+@import "highlight.js/styles/github.css";
 
+/* 当 HTML 标签上有 data-theme="dark" 时，覆盖为暗色主题的变量 */
+[data-theme="dark"] {
+  /* 引入暗色主题 */
+  @import "highlight.js/styles/github-dark.css";
+}
 @theme {
   /* 暗色基准色板 */
   --color-bg-base: #0B0E11;
@@ -147,3 +154,50 @@ body {
 [data-theme="light"] .theme-toggle .icon-sun { display: none; }
 [data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
+/* 修复暗黑模式下加粗文字颜色太深的问题 */
+[data-theme="dark"] .prose strong {
+  color: #e5e7eb; /* 使用明亮的浅灰白，确保高对比度 */
+  font-weight: 600; /* 稍微控制一下字重，太粗了也不好看 */
+}
+/* 修复暗黑模式下表格表头文字看不见的问题 */
+[data-theme="dark"] .prose thead th {
+  color: #f3f4f6; /* 表头文字改为亮白色 */
+  background-color: rgba(255, 255, 255, 0.05); /* 加一点极弱的白色背景，区分表头和表体 */
+  border-bottom-color: #4b5563; /* 让底部的分割线更明显一点 */
+}
+
+/* 如果你的表格内容文字也很暗，可以顺便把表格整体的边框颜色也调亮 */
+[data-theme="dark"] .prose table {
+  border-color: #374151;
+}
+
+[data-theme="dark"] .prose tbody td {
+  border-bottom-color: #374151; /* 数据行的分割线稍微调亮 */
+}
+
+/* 1. 电脑端：常规垂直居中与内边距 */
+.prose thead th {
+  vertical-align: middle !important;
+  padding: 12px 16px !important;
+}
+
+.prose tbody td {
+  vertical-align: middle !important;
+}
+
+/* 2. 手机端：缩小内边距，防止撑破屏幕 */
+@media (max-width: 768px) {
+  .prose thead th,
+  .prose tbody td {
+    padding: 8px 10px !important; /* 手机端内边距变小，给文字留空间 */
+    font-size: 0.875rem; /* 字号稍微调小一点点 */
+  }
+}
+
+/* 3. 解决手机端表格横向溢出的终极方案 */
+.prose table {
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap; /* 默认不换行，交由用户横向滑动 */
+  -webkit-overflow-scrolling: touch; /* iOS 上滑动更丝滑 */
+}
