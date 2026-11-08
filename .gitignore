@@ -21,3 +21,4 @@ services/api/**/*.pyc
 .vscode/
 deploy/k8s/minio-secret.yaml
 deploy/k8s/minio-secret.yaml
+deploy/k8s/minio-secret.yaml
