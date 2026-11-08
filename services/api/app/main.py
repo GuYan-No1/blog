@@ -106,3 +106,63 @@ def create_article(article: schemas.ArticleCreate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(db_article)
     return db_article
+
+
+@app.put("/api/v1/articles/{article_id}", response_model=schemas.ArticleDetail)
+def update_article(
+    article_id: int,
+    article: schemas.ArticleCreate,
+    db: Session = Depends(get_db),
+):
+    """更新文章（编辑模式用）"""
+    db_article = (
+        db.query(articles.Article).filter(articles.Article.id == article_id).first()
+    )
+    if not db_article:
+        raise HTTPException(status_code=404, detail="文章不存在")
+
+    # 校验分类
+    if article.category_id:
+        category = (
+            db.query(articles.Category)
+            .filter(articles.Category.id == article.category_id)
+            .first()
+        )
+        if not category:
+            raise HTTPException(status_code=400, detail="分类不存在")
+
+    # 处理标签：不存在则自动创建
+    tags = []
+    for tag_name in article.tags:
+        tag = db.query(articles.Tag).filter(articles.Tag.name == tag_name).first()
+        if not tag:
+            tag = articles.Tag(name=tag_name)
+            db.add(tag)
+            db.flush()
+        tags.append(tag)
+
+    # 更新字段
+    db_article.title = article.title  # type: ignore
+    db_article.summary = article.summary  # type: ignore
+    db_article.content = article.content  # type: ignore
+    db_article.cover_image = article.cover_image  # type: ignore
+    db_article.category_id = article.category_id  # type: ignore
+    db_article.tags = tags  # type: ignore
+
+    db.commit()
+    db.refresh(db_article)
+    return db_article
+
+
+@app.delete("/api/v1/articles/{article_id}")
+def delete_article(article_id: int, db: Session = Depends(get_db)):
+    """删除文章（含标签关联，SQLAlchemy 会自动处理中间表）"""
+    db_article = (
+        db.query(articles.Article).filter(articles.Article.id == article_id).first()
+    )
+    if not db_article:
+        raise HTTPException(status_code=404, detail="文章不存在")
+
+    db.delete(db_article)
+    db.commit()
+    return {"success": True, "message": "文章已删除"}
