@@ -7,6 +7,9 @@ import Footer from "@/components/layout/footer";
 export const metadata: Metadata = {
   title: "xmoekr.dev",
   description: "个人技术博客",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
