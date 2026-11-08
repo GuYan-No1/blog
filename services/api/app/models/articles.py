@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Table
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from .database import Base
+from ..core.database import Base
 
 # 文章-标签 多对多关联中间表
 article_tag = Table(

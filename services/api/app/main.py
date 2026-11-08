@@ -16,7 +16,7 @@ app = FastAPI(title="博客 API", version="1.0.0", docs_url=None, redoc_url=None
 register_exception_handlers(app)
 
 # 注册路由
-app.include_router(upload_router)
+app.include_router(upload_router, prefix="/api/v1")
 
 
 # -------------------- 分类接口 --------------------
