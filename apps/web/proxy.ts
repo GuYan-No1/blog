@@ -6,7 +6,7 @@ export const config = {
   matcher: ["/admin/:path*"],
 };
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const adminPassword = process.env.ADMIN_PASSWORD;
   const adminSecret = process.env.ADMIN_SECRET;
 

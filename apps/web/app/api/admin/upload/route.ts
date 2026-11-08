@@ -11,16 +11,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const apiBase = process.env.API_URL;
+    const apiBase = process.env.API_INTERNAL_URL ?? process.env.NEXT_PUBLIC_API_URL;
     if (!apiBase) {
-      console.error("[Upload] 上游接口地址未配置");
+      console.error("[Upload] API_INTERNAL_URL 或 NEXT_PUBLIC_API_URL 未配置");
       return NextResponse.json({ message: "上传服务暂不可用" }, { status: 500 });
     }
 
     // 直接透传原始表单数据，不二次解析，减少内存占用
     const formData = await request.formData();
 
-    const uploadRes = await fetch(`${apiBase}/api/v1/upload/image`, {
+    const uploadRes = await fetch(`${apiBase}/upload/image`, {
       method: "POST",
       body: formData,
       headers: {

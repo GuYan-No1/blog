@@ -41,7 +41,7 @@ export default function EditForm({ params }: Props) {
   }
 
   // 上传成功后在光标处插入标准 Markdown 图片语法
-  function handleImageUploaded(url: string) {
+  function handleImageUploaded({ url, key: _key }: { url: string; key: string }) {
     const textarea = textareaRef.current;
     if (!textarea) return;
 

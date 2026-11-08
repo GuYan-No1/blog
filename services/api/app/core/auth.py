@@ -40,7 +40,7 @@ def verify_admin_token(token: str) -> bool:
 
     try:
         payload = json.loads(payload_bytes.decode("utf-8"))
-        if not payload.get("exp") or time.time() > payload["exp"]:
+        if not payload.get("exp") or time.time() * 1000 > payload["exp"]:
             return False
     except Exception:
         return False

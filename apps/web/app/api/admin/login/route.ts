@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   response.cookies.set("admin_token", token, {
     httpOnly: true,
     sameSite: "lax",
-    path: "/admin",
+    path: "/",
     maxAge: 7 * 24 * 60 * 60, // 7天
   });
 
